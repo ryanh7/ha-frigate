@@ -68,6 +68,8 @@ async def async_setup_entry(
 class FrigateObjectOccupancySensor(FrigateMQTTEntity, BinarySensorEntity):  # type: ignore[misc]
     """Frigate Occupancy Sensor class."""
 
+    _attr_entity_registry_enabled_default = False
+
     def __init__(
         self,
         config_entry: ConfigEntry,
@@ -153,6 +155,8 @@ class FrigateObjectOccupancySensor(FrigateMQTTEntity, BinarySensorEntity):  # ty
 class FrigateAudioSensor(FrigateMQTTEntity, BinarySensorEntity):  # type: ignore[misc]
     """Frigate Audio Sensor class."""
 
+    _attr_entity_registry_enabled_default = False
+
     def __init__(
         self,
         config_entry: ConfigEntry,
@@ -234,6 +238,7 @@ class FrigateAudioSensor(FrigateMQTTEntity, BinarySensorEntity):  # type: ignore
 class FrigateMotionSensor(FrigateMQTTEntity, BinarySensorEntity):  # type: ignore[misc]
     """Frigate Motion Sensor class."""
 
+    _attr_entity_registry_enabled_default = False
     _attr_name = "Motion"
 
     def __init__(
