@@ -39,11 +39,12 @@ from .views import (
     get_config_entry_for_frigate_instance_id,
     get_default_config_entry,
     get_frigate_instance_id_for_config_entry,
+    Translator,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-ITEM_LIMIT = 50
+ITEM_LIMIT = 200
 SECONDS_IN_DAY = 60 * 60 * 24
 SECONDS_IN_MONTH = SECONDS_IN_DAY * 31
 
@@ -616,6 +617,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                     )
                     # Use the media class of the children to help distinguish
                     # the icons in the frontend.
+                    t = Translator(self.hass, config_entry=config_entry).text
                     base.children.extend(
                         [
                             BrowseMediaSource(
@@ -624,7 +626,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                                 media_class=MEDIA_CLASS_DIRECTORY,
                                 children_media_class=clips_identifier.media_class,
                                 media_content_type=clips_identifier.media_type,
-                                title=f"Clips [{config_entry.title}]",
+                                title=f"{t('Clips')} [{config_entry.title}]",
                                 can_play=False,
                                 can_expand=True,
                                 thumbnail=None,
@@ -636,7 +638,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                                 media_class=MEDIA_CLASS_DIRECTORY,
                                 children_media_class=recording_identifier.media_class,
                                 media_content_type=recording_identifier.media_type,
-                                title=f"Recordings [{config_entry.title}]",
+                                title=f"{t('Recordings')} [{config_entry.title}]",
                                 can_play=False,
                                 can_expand=True,
                                 thumbnail=None,
@@ -648,7 +650,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                                 media_class=MEDIA_CLASS_DIRECTORY,
                                 children_media_class=snapshots_identifier.media_class,
                                 media_content_type=snapshots_identifier.media_type,
-                                title=f"Snapshots [{config_entry.title}]",
+                                title=f"{t('Snapshots')} [{config_entry.title}]",
                                 can_play=False,
                                 can_expand=True,
                                 thumbnail=None,
@@ -751,12 +753,13 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
         events: list[dict[str, Any]],
     ) -> BrowseMediaSource:
         """Browse events."""
+        t = Translator(self.hass, frigate_instance_id=identifier.frigate_instance_id).text
         count = self._count_by(summary_data, identifier)
 
         if identifier.is_root():
-            title = f"{identifier.frigate_media_type.value.capitalize()} ({count})"
+            title = f"{t(identifier.frigate_media_type.value.capitalize())} ({count})"
         else:
-            title = f"{' > '.join([s for s in get_friendly_name(identifier.name).split('.') if s != '']).title()} ({count})"
+            title = f"{' > '.join([t(s) for s in get_friendly_name(identifier.name).split('.') if s != '']).title()} ({count})"
 
         base = BrowseMediaSource(
             domain=DOMAIN,
@@ -816,7 +819,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                     media_class=MEDIA_CLASS_DIRECTORY,
                     children_media_class=MEDIA_CLASS_DIRECTORY,
                     media_content_type=identifier.media_type,
-                    title=f"All ({count})",
+                    title=f"{t('All')} ({count})",
                     can_play=False,
                     can_expand=True,
                     thumbnail=None,
@@ -872,6 +875,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
         identifier: EventSearchIdentifier,
         shown_event_count: int,
     ) -> BrowseMediaSource:
+        t = Translator(self.hass, frigate_instance_id=identifier.frigate_instance_id).text
         sources = []
         for camera in summary_data.cameras:
             count = self._count_by(
@@ -894,7 +898,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                     media_class=MEDIA_CLASS_DIRECTORY,
                     children_media_class=MEDIA_CLASS_DIRECTORY,
                     media_content_type=identifier.media_type,
-                    title=f"{get_friendly_name(camera)} ({count})",
+                    title=f"{t(camera, get_friendly_name(camera))} ({count})",
                     can_play=False,
                     can_expand=True,
                     thumbnail=None,
@@ -908,6 +912,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
         identifier: EventSearchIdentifier,
         shown_event_count: int,
     ) -> BrowseMediaSource:
+        t = Translator(self.hass, frigate_instance_id=identifier.frigate_instance_id).text
         sources = []
         for label in summary_data.labels:
             count = self._count_by(
@@ -930,7 +935,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                     media_class=MEDIA_CLASS_DIRECTORY,
                     children_media_class=MEDIA_CLASS_DIRECTORY,
                     media_content_type=identifier.media_type,
-                    title=f"{get_friendly_name(label)} ({count})",
+                    title=f"{t(label, get_friendly_name(label))} ({count})",
                     can_play=False,
                     can_expand=True,
                     thumbnail=None,
@@ -945,6 +950,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
         shown_event_count: int,
     ) -> BrowseMediaSource:
         """Build zone media sources."""
+        t = Translator(self.hass, frigate_instance_id=identifier.frigate_instance_id).text
         sources = []
         for zone in summary_data.zones:
             count = self._count_by(summary_data, attr.evolve(identifier, zone=zone))
@@ -961,7 +967,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                     media_class=MEDIA_CLASS_DIRECTORY,
                     children_media_class=MEDIA_CLASS_DIRECTORY,
                     media_content_type=identifier.media_type,
-                    title=f"{get_friendly_name(zone)} ({count})",
+                    title=f"{t(zone, get_friendly_name(zone))} ({count})",
                     can_play=False,
                     can_expand=True,
                     thumbnail=None,
@@ -976,6 +982,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
         shown_event_count: int,
     ) -> BrowseMediaSource:
         """Build data media sources."""
+        t = Translator(self.hass, frigate_instance_id=identifier.frigate_instance_id).text
         sources = []
 
         now = dt.datetime.now(DEFAULT_TIME_ZONE)
@@ -1126,7 +1133,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                     media_class=MEDIA_CLASS_DIRECTORY,
                     children_media_class=MEDIA_CLASS_DIRECTORY,
                     media_content_type=identifier.media_type,
-                    title=f"Today ({count_today})",
+                    title=f"{t('Today')} ({count_today})",
                     can_play=False,
                     can_expand=True,
                     thumbnail=None,
@@ -1146,7 +1153,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                     media_class=MEDIA_CLASS_DIRECTORY,
                     children_media_class=MEDIA_CLASS_DIRECTORY,
                     media_content_type=identifier.media_type,
-                    title=f"Yesterday ({count_yesterday})",
+                    title=f"{t('Yesterday')} ({count_yesterday})",
                     can_play=False,
                     can_expand=True,
                     thumbnail=None,
@@ -1168,7 +1175,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                     media_class=MEDIA_CLASS_DIRECTORY,
                     children_media_class=MEDIA_CLASS_DIRECTORY,
                     media_content_type=identifier.media_type,
-                    title=f"This Month ({count_this_month})",
+                    title=f"{t('This Month')} ({count_this_month})",
                     can_play=False,
                     can_expand=True,
                     thumbnail=None,
@@ -1188,7 +1195,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                     media_class=MEDIA_CLASS_DIRECTORY,
                     children_media_class=MEDIA_CLASS_DIRECTORY,
                     media_content_type=identifier.media_type,
-                    title=f"Last Month ({count_last_month})",
+                    title=f"{t('Last Month')} ({count_last_month})",
                     can_play=False,
                     can_expand=True,
                     thumbnail=None,
@@ -1210,7 +1217,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                     media_class=MEDIA_CLASS_DIRECTORY,
                     children_media_class=MEDIA_CLASS_DIRECTORY,
                     media_content_type=identifier.media_type,
-                    title="This Year",
+                    title=t("This Year"),
                     can_play=False,
                     can_expand=True,
                     thumbnail=None,
@@ -1237,13 +1244,14 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
         self, identifier: RecordingIdentifier
     ) -> BrowseMediaSource:
         """Get the base BrowseMediaSource object for a recording identifier."""
+        t = Translator(self.hass, frigate_instance_id=identifier.frigate_instance_id).text
         return BrowseMediaSource(
             domain=DOMAIN,
             identifier=identifier,
             media_class=MEDIA_CLASS_DIRECTORY,
             children_media_class=MEDIA_CLASS_DIRECTORY,
             media_content_type=identifier.media_type,
-            title="Recordings",
+            title=t("Recordings"),
             can_play=False,
             can_expand=True,
             thumbnail=None,
@@ -1254,6 +1262,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
         self, identifier: RecordingIdentifier, config: dict[str, dict]
     ) -> BrowseMediaSource:
         """List cameras for recordings."""
+        t = Translator(self.hass, frigate_instance_id=identifier.frigate_instance_id).text
         base = self._get_recording_base_media_source(identifier)
 
         for camera in config["cameras"].keys():
@@ -1267,7 +1276,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
                     media_class=MEDIA_CLASS_DIRECTORY,
                     children_media_class=MEDIA_CLASS_DIRECTORY,
                     media_content_type=identifier.media_type,
-                    title=get_friendly_name(camera),
+                    title=t(camera, get_friendly_name(camera)),
                     can_play=False,
                     can_expand=True,
                     thumbnail=None,

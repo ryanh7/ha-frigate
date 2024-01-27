@@ -96,6 +96,19 @@ def get_frigate_instance_id_for_config_entry(
     config = hass.data[DOMAIN].get(config_entry.entry_id, {}).get(ATTR_CONFIG, {})
     return get_frigate_instance_id(config) if config else None
 
+class Translator():
+    def __init__(
+            self, hass: HomeAssistant,
+            config_entry: ConfigEntry | None = None,
+            frigate_instance_id: str | None = None,
+        ) -> None:
+        if frigate_instance_id is not None and (config:=get_config_entry_for_frigate_instance_id(hass, frigate_instance_id)) is not None:
+            config_entry = config
+        self._message = hass.data[DOMAIN].get(config_entry.entry_id, {}).get(ATTR_CONFIG, {}).get("translations", {})
+        
+    def text(self, text: str, default_text: str | None = None) -> str:
+        return self._message.get(text, text if default_text is None else default_text )
+
 
 def async_setup(hass: HomeAssistant) -> None:
     """Set up the views."""
