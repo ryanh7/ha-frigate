@@ -800,7 +800,7 @@ class FrigateMediaSource(MediaSource):  # type: ignore[misc]
 
         # only show the drill down options if there are more than 10 events
         # and there is more than 1 drilldown or when you aren't showing any events
-        if len(events) > 10 and (len(drilldown_sources) > 1 or len(base.children) == 0):
+        if len(events) > 10 and len(base.children) == 0:
             base.children.extend(drilldown_sources)
 
         # add an all source if there are no drilldowns available and you are at the item limit
