@@ -119,6 +119,7 @@ async def async_setup_entry(
 class FrigateCamera(FrigateMQTTEntity, CoordinatorEntity, Camera):  # type: ignore[misc]
     """Representation of a Frigate camera."""
 
+    _attr_entity_registry_enabled_default = False
     # sets the entity name to same as device name ex: camera.front_doorbell
     _attr_name = None
 

@@ -7,6 +7,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_URL, PERCENTAGE, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription, SensorStateClass
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -85,28 +86,11 @@ async def async_setup_entry(
     entities.append(FrigateStatusSensor(coordinator, entry))
     async_add_entities(entities)
 
-
-class FrigateFpsSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
-    """Frigate Sensor class."""
-
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_name = "Detection fps"
-
-    def __init__(
-        self, coordinator: FrigateDataUpdateCoordinator, config_entry: ConfigEntry
-    ) -> None:
+class FrigateSensorEntity(SensorEntity, FrigateEntity):
+    def __init__(self, config_entry: ConfigEntry) -> None:
         """Construct a FrigateFpsSensor."""
         FrigateEntity.__init__(self, config_entry)
-        CoordinatorEntity.__init__(self, coordinator)
-        self._attr_entity_registry_enabled_default = False
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID to use for this entity."""
-        return get_frigate_entity_unique_id(
-            self._config_entry.entry_id, "sensor_fps", "detection"
-        )
-
+    
     @property
     def device_info(self) -> DeviceInfo:
         """Get device information."""
@@ -118,6 +102,35 @@ class FrigateFpsSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
             "manufacturer": NAME,
         }
 
+class FrigateFpsSensor(FrigateSensorEntity, CoordinatorEntity):  # type: ignore[misc]
+    """Frigate Sensor class."""
+
+    _attr_entity_registry_enabled_default = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_name = "Detection fps"
+
+    entity_description = SensorEntityDescription(
+        key="fps",
+        translation_key="fps",
+        native_unit_of_measurement=FPS,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon=ICON_SPEEDOMETER,
+    )
+
+    def __init__(
+        self, coordinator: FrigateDataUpdateCoordinator, config_entry: ConfigEntry
+    ) -> None:
+        """Construct a FrigateFpsSensor."""
+        FrigateSensorEntity.__init__(self, config_entry)
+        CoordinatorEntity.__init__(self, coordinator)
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID to use for this entity."""
+        return get_frigate_entity_unique_id(
+            self._config_entry.entry_id, "sensor_fps", "detection"
+        )
+    
     @property
     def state(self) -> int | None:
         """Return the state of the sensor."""
@@ -130,30 +143,25 @@ class FrigateFpsSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
                     pass
         return None
 
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit of measurement of the sensor."""
-        return FPS
-
-    @property
-    def icon(self) -> str:
-        """Return the icon of the sensor."""
-        return ICON_SPEEDOMETER
-
-
-class FrigateStatusSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
+class FrigateStatusSensor(FrigateSensorEntity, CoordinatorEntity):  # type: ignore[misc]
     """Frigate Status Sensor class."""
 
+    _attr_entity_registry_enabled_default = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_name = "Status"
+
+    entity_description = SensorEntityDescription(
+        key="status",
+        translation_key="status",
+        icon=ICON_SERVER,
+    )
 
     def __init__(
         self, coordinator: FrigateDataUpdateCoordinator, config_entry: ConfigEntry
     ) -> None:
         """Construct a FrigateStatusSensor."""
-        FrigateEntity.__init__(self, config_entry)
+        FrigateSensorEntity.__init__(self, config_entry)
         CoordinatorEntity.__init__(self, coordinator)
-        self._attr_entity_registry_enabled_default = False
 
     @property
     def unique_id(self) -> str:
@@ -178,16 +186,19 @@ class FrigateStatusSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[mis
         """Return the state of the sensor."""
         return str(self.coordinator.server_status)
 
-    @property
-    def icon(self) -> str:
-        """Return the icon of the sensor."""
-        return ICON_SERVER
-
-
-class DetectorSpeedSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
+class DetectorSpeedSensor(FrigateSensorEntity, CoordinatorEntity):  # type: ignore[misc]
     """Frigate Detector Speed class."""
 
+    _attr_entity_registry_enabled_default = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    entity_description = SensorEntityDescription(
+        key="speed",
+        translation_key="speed",
+        native_unit_of_measurement=MS,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon=ICON_SPEEDOMETER,
+    )
 
     def __init__(
         self,
@@ -196,10 +207,10 @@ class DetectorSpeedSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[mis
         detector_name: str,
     ) -> None:
         """Construct a DetectorSpeedSensor."""
-        FrigateEntity.__init__(self, config_entry)
+        FrigateSensorEntity.__init__(self, config_entry)
         CoordinatorEntity.__init__(self, coordinator)
         self._detector_name = detector_name
-        self._attr_entity_registry_enabled_default = False
+        self._attr_name = f"{get_friendly_name(self._detector_name)} inference speed"
 
     @property
     def unique_id(self) -> str:
@@ -207,22 +218,6 @@ class DetectorSpeedSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[mis
         return get_frigate_entity_unique_id(
             self._config_entry.entry_id, "sensor_detector_speed", self._detector_name
         )
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Get device information."""
-        return {
-            "identifiers": {get_frigate_device_identifier(self._config_entry)},
-            "name": NAME,
-            "model": self._get_model(),
-            "configuration_url": self._config_entry.data.get(CONF_URL),
-            "manufacturer": NAME,
-        }
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return f"{get_friendly_name(self._detector_name)} inference speed"
 
     @property
     def state(self) -> int | None:
@@ -240,21 +235,20 @@ class DetectorSpeedSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[mis
                     pass
         return None
 
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit of measurement of the sensor."""
-        return MS
 
-    @property
-    def icon(self) -> str:
-        """Return the icon of the sensor."""
-        return ICON_SPEEDOMETER
-
-
-class GpuLoadSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
+class GpuLoadSensor(FrigateSensorEntity, CoordinatorEntity):  # type: ignore[misc]
     """Frigate GPU Load class."""
 
+    _attr_entity_registry_enabled_default = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    entity_description = SensorEntityDescription(
+        key="gpu_load",
+        translation_key="gpu_load",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon=ICON_SPEEDOMETER,
+    )
 
     def __init__(
         self,
@@ -265,9 +259,8 @@ class GpuLoadSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
         """Construct a GpuLoadSensor."""
         self._gpu_name = gpu_name
         self._attr_name = f"{get_friendly_name(self._gpu_name)} gpu load"
-        FrigateEntity.__init__(self, config_entry)
+        FrigateSensorEntity.__init__(self, config_entry)
         CoordinatorEntity.__init__(self, coordinator)
-        self._attr_entity_registry_enabled_default = False
 
     @property
     def unique_id(self) -> str:
@@ -275,17 +268,6 @@ class GpuLoadSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
         return get_frigate_entity_unique_id(
             self._config_entry.entry_id, "gpu_load", self._gpu_name
         )
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Get device information."""
-        return {
-            "identifiers": {get_frigate_device_identifier(self._config_entry)},
-            "name": NAME,
-            "model": self._get_model(),
-            "configuration_url": self._config_entry.data.get(CONF_URL),
-            "manufacturer": NAME,
-        }
 
     @property
     def state(self) -> float | None:
@@ -307,21 +289,20 @@ class GpuLoadSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
 
         return None
 
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit of measurement of the sensor."""
-        return "%"
 
-    @property
-    def icon(self) -> str:
-        """Return the icon of the sensor."""
-        return ICON_SPEEDOMETER
-
-
-class CameraFpsSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
+class CameraFpsSensor(SensorEntity, FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
     """Frigate Camera Fps class."""
 
+    _attr_entity_registry_enabled_default = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    entity_description = SensorEntityDescription(
+        key="camera_fps",
+        translation_key="camera_fps",
+        native_unit_of_measurement=FPS,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon=ICON_SPEEDOMETER,
+    )
 
     def __init__(
         self,
@@ -335,7 +316,7 @@ class CameraFpsSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
         CoordinatorEntity.__init__(self, coordinator)
         self._cam_name = cam_name
         self._fps_type = fps_type
-        self._attr_entity_registry_enabled_default = False
+        self._attr_name = f"{self._fps_type} fps"
 
     @property
     def unique_id(self) -> str:
@@ -361,16 +342,6 @@ class CameraFpsSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
         }
 
     @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return f"{self._fps_type} fps"
-
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit of measurement of the sensor."""
-        return FPS
-
-    @property
     def state(self) -> int | None:
         """Return the state of the sensor."""
 
@@ -388,15 +359,11 @@ class CameraFpsSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
                     pass
         return None
 
-    @property
-    def icon(self) -> str:
-        """Return the icon of the sensor."""
-        return ICON_SPEEDOMETER
-
-
-class FrigateObjectCountSensor(FrigateMQTTEntity):
+class FrigateObjectCountSensor(SensorEntity, FrigateMQTTEntity):
     """Frigate Motion Sensor class."""
 
+    _attr_entity_registry_enabled_default = False
+    
     def __init__(
         self,
         config_entry: ConfigEntry,
@@ -410,6 +377,7 @@ class FrigateObjectCountSensor(FrigateMQTTEntity):
         self._state = 0
         self._frigate_config = frigate_config
         self._icon = get_icon_from_type(self._obj_name)
+        self._attr_name = f"{self._obj_name} count"
 
         super().__init__(
             config_entry,
@@ -460,19 +428,9 @@ class FrigateObjectCountSensor(FrigateMQTTEntity):
         }
 
     @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return f"{self._obj_name} count"
-
-    @property
     def state(self) -> int:
         """Return true if the binary sensor is on."""
         return self._state
-
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit of measurement of the sensor."""
-        return "objects"
 
     @property
     def icon(self) -> str:
@@ -480,10 +438,18 @@ class FrigateObjectCountSensor(FrigateMQTTEntity):
         return self._icon
 
 
-class DeviceTempSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
+class DeviceTempSensor(FrigateSensorEntity, CoordinatorEntity):  # type: ignore[misc]
     """Frigate Coral Temperature Sensor class."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    entity_description = SensorEntityDescription(
+        key="device_temp",
+        translation_key="device_temp",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon=ICON_CORAL,
+    )
 
     def __init__(
         self,
@@ -493,9 +459,10 @@ class DeviceTempSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
     ) -> None:
         """Construct a CoralTempSensor."""
         self._name = name
-        FrigateEntity.__init__(self, config_entry)
+        FrigateSensorEntity.__init__(self, config_entry)
         CoordinatorEntity.__init__(self, coordinator)
         self._attr_entity_registry_enabled_default = False
+        self._attr_name = f"{get_friendly_name(self._name)} temperature"
 
     @property
     def unique_id(self) -> str:
@@ -503,22 +470,6 @@ class DeviceTempSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
         return get_frigate_entity_unique_id(
             self._config_entry.entry_id, "sensor_temp", self._name
         )
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Get device information."""
-        return {
-            "identifiers": {get_frigate_device_identifier(self._config_entry)},
-            "name": NAME,
-            "model": self._get_model(),
-            "configuration_url": self._config_entry.data.get(CONF_URL),
-            "manufacturer": NAME,
-        }
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return f"{get_friendly_name(self._name)} temperature"
 
     @property
     def state(self) -> float | None:
@@ -535,21 +486,20 @@ class DeviceTempSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
                 pass
         return None
 
-    @property
-    def unit_of_measurement(self) -> Any:
-        """Return the unit of measurement of the sensor."""
-        return UnitOfTemperature.CELSIUS
 
-    @property
-    def icon(self) -> str:
-        """Return the icon of the sensor."""
-        return ICON_CORAL
-
-
-class CameraProcessCpuSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
+class CameraProcessCpuSensor(SensorEntity, FrigateEntity, CoordinatorEntity):  # type: ignore[misc]
     """Cpu usage for camera processes class."""
 
+    _attr_entity_registry_enabled_default = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    entity_description = SensorEntityDescription(
+        key="cpu_usage",
+        translation_key="cpu_usage",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon=ICON_CORAL,
+    )
 
     def __init__(
         self,
@@ -564,7 +514,6 @@ class CameraProcessCpuSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[
         self._attr_name = f"{self._process_type} cpu usage"
         FrigateEntity.__init__(self, config_entry)
         CoordinatorEntity.__init__(self, coordinator)
-        self._attr_entity_registry_enabled_default = False
 
     @property
     def unique_id(self) -> str:
@@ -614,13 +563,3 @@ class CameraProcessCpuSensor(FrigateEntity, CoordinatorEntity):  # type: ignore[
             except (TypeError, ValueError):
                 pass
         return None
-
-    @property
-    def unit_of_measurement(self) -> Any:
-        """Return the unit of measurement of the sensor."""
-        return PERCENTAGE
-
-    @property
-    def icon(self) -> str:
-        """Return the icon of the sensor."""
-        return ICON_CORAL

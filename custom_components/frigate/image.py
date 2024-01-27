@@ -24,6 +24,8 @@ from .const import ATTR_CONFIG, DOMAIN, NAME
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+ALL_CAM = "+"
+ALL_OBJECT = "all"
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
@@ -35,13 +37,15 @@ async def async_setup_entry(
     async_add_entities(
         [
             FrigateMqttSnapshots(hass, entry, frigate_config, cam_name, obj_name)
-            for cam_name, obj_name in get_cameras_and_objects(frigate_config, False)
+            for cam_name, obj_name in (get_cameras_and_objects(frigate_config, True) | {(ALL_CAM, "all")})
         ]
     )
 
 
 class FrigateMqttSnapshots(FrigateMQTTEntity, ImageEntity):  # type: ignore[misc]
     """Frigate best image class."""
+
+    _attr_entity_registry_enabled_default = False
 
     def __init__(
         self,
@@ -68,7 +72,7 @@ class FrigateMqttSnapshots(FrigateMQTTEntity, ImageEntity):  # type: ignore[misc
                     "qos": 0,
                     "topic": (
                         f"{self._frigate_config['mqtt']['topic_prefix']}"
-                        f"/{self._cam_name}/{self._obj_name}/snapshot"
+                        f"/{self._cam_name}/{self._obj_name if self._obj_name != ALL_OBJECT else '+'}/snapshot"
                     ),
                     "encoding": None,
                 },
@@ -96,6 +100,12 @@ class FrigateMqttSnapshots(FrigateMQTTEntity, ImageEntity):  # type: ignore[misc
     def device_info(self) -> DeviceInfo:
         """Get the device information."""
         return {
+            "identifiers": {get_frigate_device_identifier(self._config_entry)},
+            "name": NAME,
+            "model": self._get_model(),
+            "configuration_url": self._config_entry.data.get(CONF_URL),
+            "manufacturer": NAME,
+        } if self._cam_name == ALL_CAM else {
             "identifiers": {
                 get_frigate_device_identifier(self._config_entry, self._cam_name)
             },
