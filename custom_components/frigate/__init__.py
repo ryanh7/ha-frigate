@@ -24,12 +24,13 @@ from homeassistant.components.mqtt.subscription import (
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_MODEL, CONF_HOST, CONF_URL
-from homeassistant.core import Config, HomeAssistant, callback, valid_entity_id
+from homeassistant.core import HomeAssistant, callback, valid_entity_id
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_integration
 from homeassistant.util import slugify
 
@@ -164,7 +165,7 @@ def get_zones(config: dict[str, Any]) -> set[str]:
     return cameras_zones
 
 
-async def async_setup(hass: HomeAssistant, config: Config) -> bool:
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up this integration using YAML is not supported."""
     integration = await async_get_integration(hass, DOMAIN)
     _LOGGER.info(
